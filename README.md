@@ -1,16 +1,29 @@
-# React + Vite
+# Mubarakan Admin
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Web admin for Mubarakan, built with React, Vite and React Router. All data is sample data in `src/data/`.
 
-Currently, two official plugins are available:
+```bash
+npm install
+npm run dev     # http://localhost:5173
+npm run build
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Structure
 
-## React Compiler
+```
+src/
+  App.jsx                 routes
+  context/                global state (role, filters, toasts, dialogs)
+  hooks/                  useAdmin, useNavigation, useActions, useDetailTab
+  data/                   sample data, selectors, constants, icons, image urls
+  components/
+    layout/               sidebar, top bar, search, notifications, role menu
+    common/               buttons, cards, pills, toggles, popovers, dialogs, toasts
+    list/                 DataList: search, filters, sort, bulk actions, pages
+    detail/               DetailView and its blocks
+    dashboard/            chart, funnel, mini tables
+  pages/                  one file per section
+    details/              one file per record type
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Switch roles from the avatar menu in the top right to see what each team member can reach.
