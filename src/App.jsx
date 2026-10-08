@@ -2,10 +2,12 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout'
 import RoleGuard from './components/layout/RoleGuard'
 import AdminProvider from './context/AdminProvider'
+import useAdmin from './hooks/useAdmin'
 import Ads from './pages/Ads'
 import Businesses from './pages/Businesses'
 import Dashboard from './pages/Dashboard'
 import Enquiries from './pages/Enquiries'
+import Login from './pages/Login'
 import Messages from './pages/Messages'
 import Payments from './pages/Payments'
 import ReviewPosts from './pages/ReviewPosts'
@@ -35,20 +37,30 @@ const SECTIONS = [
 export default function App() {
   return (
     <AdminProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route index element={<Dashboard />} />
-            {SECTIONS.map(([path, List, Detail]) => (
-              <Route key={path} path={path}>
-                <Route index element={<RoleGuard page={path}><List /></RoleGuard>} />
-                {Detail && <Route path=":id" element={<Detail />} />}
-              </Route>
-            ))}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <Gate />
     </AdminProvider>
+  )
+}
+
+// Nothing of the admin renders until a signed in admin is confirmed by the database.
+function Gate() {
+  const { auth } = useAdmin()
+  if (auth.status === 'loading') return <div style={{ height: '100vh', background: '#F7F4EF' }} />
+  if (auth.status === 'out') return <Login notice={auth.notice} />
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route index element={<Dashboard />} />
+          {SECTIONS.map(([path, List, Detail]) => (
+            <Route key={path} path={path}>
+              <Route index element={<RoleGuard page={path}><List /></RoleGuard>} />
+              {Detail && <Route path=":id" element={<Detail />} />}
+            </Route>
+          ))}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   )
 }

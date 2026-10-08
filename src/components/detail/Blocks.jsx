@@ -76,12 +76,16 @@ export function TimelineBlock({ items }) {
   )
 }
 
-// On/off settings that remember their state. items: [key, title, sub, on by default]
-export function TogglesBlock({ items, scope }) {
+/*
+ * On/off settings. items: [key, title, sub, on by default].
+ * With `onChange(key, next, title)` the value comes from the item (saved data) and the caller saves
+ * the change; without it the switch only remembers its state for the session.
+ */
+export function TogglesBlock({ items, scope, onChange }) {
   const { state, setState, toast } = useAdmin()
   return items.map(([key, t, s, def]) => {
     const k = scope + ':' + key
-    const on = state.tg[k] ?? def
+    const on = onChange ? !!def : state.tg[k] ?? def
     return (
       <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 18px', borderBottom: '1px solid #F4F0E9' }}>
         <div style={{ flex: 1 }}>
@@ -91,6 +95,7 @@ export function TogglesBlock({ items, scope }) {
         <Toggle
           on={on}
           onClick={() => {
+            if (onChange) return onChange(key, !on, t)
             setState((st) => ({ tg: { ...st.tg, [k]: !on } }))
             toast(t + (on ? ' turned off' : ' turned on'))
           }}

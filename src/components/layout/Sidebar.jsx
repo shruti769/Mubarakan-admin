@@ -1,9 +1,10 @@
 import logo from '../../assets/logo.png'
 import { ENT_PAGE, NAV } from '../../data/constants'
 import { IC } from '../../data/icons'
-import { REVIEW_QUEUE } from '../../data/mock'
 import useAdmin from '../../hooks/useAdmin'
 import useNavigation, { useRoute } from '../../hooks/useNavigation'
+import { loadReview } from '../../lib/data/review'
+import useLoad from '../../lib/useLoad'
 import Icon from '../common/Icon'
 
 const collapseBtn = { width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#8A8590' }
@@ -14,8 +15,9 @@ export default function Sidebar() {
   const { page, ent } = useRoute()
   const open = state.side
   const active = ent ? ENT_PAGE[ent] : page
-  // 205 more posts wait on the server beyond the sample queue.
-  const reviewLeft = 205 + REVIEW_QUEUE.filter((m) => !state.rvDone[m.id]).length
+  // Posts and comments waiting in the review queue; counted again after each review.
+  const { data: queue } = useLoad(loadReview, [state.rvDone])
+  const reviewLeft = queue ? queue.filter((m) => !state.rvDone[m.id]).length : '—'
   const toggle = () => setState({ side: !open })
 
   const groups = NAV.map(([g, items]) => [g, items.filter((i) => can(i[0]))]).filter(([, items]) => items.length)

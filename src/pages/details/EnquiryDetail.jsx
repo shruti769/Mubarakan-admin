@@ -2,34 +2,38 @@ import { useParams } from 'react-router-dom'
 import { BlockCard, KvBlock, TimelineBlock } from '../../components/detail/Blocks'
 import DetailView from '../../components/detail/DetailView'
 import { face } from '../../data/images'
-import { getEnquiries } from '../../data/selectors'
 import useAdmin from '../../hooks/useAdmin'
 import useDetailTab from '../../hooks/useDetailTab'
-
-const FACES = ['sariRed', 'sariGreen', 'redDressPortrait', 'couplePair', 'sariSmile', 'pinkDress', 'purpleDress', 'yellowRedBridal', 'turbanMirror', 'brideWhite']
+import { answerPairs, loadEnquiry } from '../../lib/data/business'
+import useLoad from '../../lib/useLoad'
 
 export default function EnquiryDetail() {
   const { id } = useParams()
+  const { data } = useLoad(() => loadEnquiry(id), [id])
+  // Nothing to show while loading, or when no enquiry has this id.
+  if (!data) return null
+  return <Enquiry e={data} />
+}
+
+function Enquiry({ e }) {
   const { toast } = useAdmin()
-  const all = getEnquiries()
-  const e = all.find((x) => x.id === id) || all[0]
   const tabs = ['Details', 'What happened']
   const [tab, setTab] = useDetailTab('enquiry', e.id, tabs)
-  const replied = e.reply !== '—'
+  const asked = answerPairs(e)
 
   return (
     <DetailView
-      img={face(FACES[all.indexOf(e) % 10], 160)}
+      img={face(e.avatar, 160)}
       title={e.cust}
       code={e.ref}
       sub={'to ' + e.biz + ' . ' + e.date}
       status={e.st}
       stats={[['Business', e.biz], ['Category', e.cat], ['From ad', e.ad], ['Replied in', e.reply]]}
       actions={[
-        { label: 'Send to business again', run: () => toast('Sent again to ' + e.biz) },
-        { label: 'Call customer', run: () => toast('Calling ' + e.phone), primary: 1 },
+        { label: 'Send to business again', run: () => toast('Sending enquiries to businesses is not connected yet') },
+        { label: 'Call customer', run: () => { window.location.href = 'tel:' + e.phone.replace(/\s/g, '') }, primary: 1 },
       ]}
-      more={[{ label: 'Mark as a problem', run: () => toast(e.ref + ' marked as a problem'), danger: 1 }]}
+      more={[{ label: 'Mark as a problem', run: () => toast('Marking an enquiry as a problem is not connected yet'), danger: 1 }]}
       tabs={tabs}
       tab={tab}
       onTab={setTab}
@@ -37,22 +41,18 @@ export default function EnquiryDetail() {
       {tab === 'Details' && (
         <>
           <BlockCard title="Customer">
+            {/* The app only sends an enquiry after the customer agrees to share their number. */}
             <KvBlock pairs={[['Name', e.cust], ['Phone', e.phone, 1], ['Prefers', e.prefers], ['Agreed to share their number', 'Yes, ' + e.date]]} />
           </BlockCard>
           <BlockCard title="What they asked">
-            <KvBlock pairs={[['Wedding date', 'Sat 14 Nov 2026'], ['Events', 'Mehndi, Walima'], ['Venue', 'Royal Palm, Lahore'], ['Guests', '200 to 350'], ['Style', 'Traditional maroon'], ['Budget', '6 to 10 lakh']]} />
+            <KvBlock pairs={asked} />
           </BlockCard>
         </>
       )}
       {tab === 'What happened' && (
         <BlockCard>
-          <TimelineBlock
-            items={[
-              [e.date, 'Customer sent the enquiry from the ' + e.ad.toLowerCase() + ' ad', '#1E5A4A'],
-              [e.date, 'Sent to ' + e.biz + ' on WhatsApp', e.st[0] === 'New' ? '#C9A227' : '#1E5A4A'],
-              [replied ? 'after ' + e.reply : 'waiting', replied ? e.biz + ' replied to the customer' : e.biz + ' has not replied yet', replied ? '#1E5A4A' : '#A6192E'],
-            ]}
-          />
+          {/* Delivery to the business and its reply are not tracked in the backend. */}
+          <TimelineBlock items={[[e.date, 'Customer sent the enquiry' + (e.ad !== '—' ? ' from the ' + e.ad.toLowerCase() + ' ad' : ''), '#1E5A4A']]} />
         </BlockCard>
       )}
     </DetailView>

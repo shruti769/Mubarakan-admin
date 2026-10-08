@@ -1,29 +1,35 @@
 import { useParams } from 'react-router-dom'
 import { BlockCard, KvBlock } from '../../components/detail/Blocks'
 import DetailView from '../../components/detail/DetailView'
-import { face } from '../../data/images'
-import { getPayments } from '../../data/selectors'
 import useAdmin from '../../hooks/useAdmin'
+
+// Bills and payments are not in the backend yet, so there is no payment to open.
+const PAYMENTS = []
 
 export default function PaymentDetail() {
   const { id } = useParams()
-  const { toast, ask } = useAdmin()
-  const all = getPayments()
-  const p = all.find((x) => x.id === id) || all[0]
+  const p = PAYMENTS.find((x) => x.id === id)
+  if (!p) return null
+  return <Payment p={p} />
+}
+
+function Payment({ p }) {
+  const { toast } = useAdmin()
+  const notConnected = () => toast('Payments are not connected yet')
 
   return (
     <DetailView
-      img={face('decorCeiling', 160)}
+      img={p.img}
       title={p.biz}
       code={p.ref}
       sub={p.item}
       status={p.st}
-      stats={[['Amount', p.amt], ['Sent', p.date], ['Due', '15 days after'], ['Paid by', p.st[0] === 'Paid' ? 'Card' : '—']]}
+      stats={[['Amount', p.amt], ['Sent', p.date], ['Due', '—'], ['Paid by', '—']]}
       actions={[
-        { label: 'Download the bill', run: () => toast(p.ref + '.pdf downloaded') },
-        { label: 'Send reminder', run: () => toast('Reminder sent to ' + p.biz), primary: 1 },
+        { label: 'Download the bill', run: notConnected },
+        { label: 'Send reminder', run: notConnected, primary: 1 },
       ]}
-      more={[{ label: 'Refund', run: () => ask({ title: 'Refund ' + p.biz + '?', body: p.amt + ' goes back in 5 to 10 days.', label: 'Refund', then: () => toast('Refunded') }), danger: 1 }]}
+      more={[{ label: 'Refund', run: notConnected, danger: 1 }]}
       tabs={['Details']}
       tab="Details"
       onTab={() => {}}

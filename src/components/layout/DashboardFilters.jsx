@@ -1,4 +1,6 @@
-import { CITIES, RANGES } from '../../data/constants'
+import { RANGES } from '../../data/constants'
+import { loadCities } from '../../lib/data/cities'
+import useLoad from '../../lib/useLoad'
 import { IC } from '../../data/icons'
 import useAdmin from '../../hooks/useAdmin'
 import Icon from '../common/Icon'
@@ -12,6 +14,7 @@ const shortDate = (d) => d.slice(5).split('-').reverse().join('/')
 
 // Date range, city and export, shown in the top bar on the dashboard only.
 export default function DashboardFilters() {
+  const { data: cities } = useLoad(loadCities, [])
   const { state, setState, togglePop, toast } = useAdmin()
   const { range, city, custom, pop } = state
   const rangeLabel = range === 'Custom' ? shortDate(custom.from) + ' to ' + shortDate(custom.to) : range
@@ -50,7 +53,7 @@ export default function DashboardFilters() {
         </div>
         {pop === 'cty' && (
           <Popover style={{ top: 40, left: 0, width: 190 }}>
-            {CITIES.map((c) => (
+            {['All cities', ...(cities || [])].map((c) => (
               <Option key={c} label={c} on={c === city} onClick={() => setState({ city: c, pop: '' })} />
             ))}
           </Popover>
@@ -58,7 +61,7 @@ export default function DashboardFilters() {
       </div>
       <div
         className="hv-soft"
-        onClick={() => toast('Exporting the dashboard for ' + range.toLowerCase() + (cityOn ? ', ' + city : ''))}
+        onClick={() => toast('Exporting the dashboard is not connected yet')}
         style={{ ...chip, gap: 7, border: '1px solid #E4E0DA', background: '#fff' }}
       >
         <Icon d={IC.download} size={14} stroke="#6F6A78" sw={2.2} />

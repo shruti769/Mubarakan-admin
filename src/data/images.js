@@ -26,12 +26,28 @@ function base(k) {
   return 'https://plus.unsplash.com/premium_photo-' + id
 }
 
+// Real data stores full URLs (avatars, uploads, ad photos); those pass through unchanged. The app's
+// video keys (used by seeded ads) resolve to their Pexels poster, as in the mobile app.
+const VID = {
+  reelBride: '4446328/pexels-photo-4446328', reelHenna: '11122318/pexels-photo-11122318', reelPortrait: '32315939/indian-wedding-ceremony-32315939',
+  reelJewels: '11122323/pexels-photo-11122323', reelHands: '11122340/pexels-photo-11122340', reelBangles: '11122341/pexels-photo-11122341',
+}
+const passThrough = (k) => {
+  if (typeof k === 'string' && /^https?:\/\//.test(k)) return k
+  if (VID[k]) return 'https://images.pexels.com/videos/' + VID[k] + '.jpeg?auto=compress&cs=tinysrgb&w=800'
+  return null
+}
+
 export function img(k, w, h) {
+  const p = passThrough(k)
+  if (p) return p
   if (!IMG[k]) return ''
   return base(k) + '?auto=format&fit=crop&crop=' + (WIDE.includes(k) ? 'entropy' : 'faces,entropy') + '&w=' + w + '&h=' + h + '&q=70'
 }
 
 export function face(k, s) {
+  const p = passThrough(k)
+  if (p) return p
   if (!IMG[k]) return ''
   return base(k) + '?auto=format&fit=facearea&facepad=3.2&w=' + s + '&h=' + s + '&q=70'
 }

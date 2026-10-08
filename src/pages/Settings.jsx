@@ -1,70 +1,69 @@
 import Card from '../components/common/Card'
 import Toggle from '../components/common/Toggle'
 import { ROLES } from '../data/constants'
-import { WEDDING_EVENTS } from '../data/mock'
 import useAdmin from '../hooks/useAdmin'
+import { advanceDataRequest, loadPrivacyRequests } from '../lib/data/settings'
+import useLoad from '../lib/useLoad'
 
 const TABS = [['team', 'Team and roles'], ['events', 'Wedding events'], ['app', 'App features and photos'], ['privacy', 'Privacy and data']]
 
-const TEAM = [
-  ['Hamza Qureshi', 'Owner . Lahore', 'Active now'], ['Mahnoor Baig', 'Operations . Lahore', '4 min ago'], ['Bilal Saeed', 'Operations . Karachi', '1 hour ago'],
-  ['Usman Tariq', 'Sales . Lahore', '12 min ago'], ['Areeba Siddiqui', 'Support . Islamabad', '26 min ago'], ['Kamran Shah', 'Finance . London', 'Yesterday'],
-]
+// A settings row shows either a value chip or a switch. `run` makes the chip a button.
+const row = (t, s, v, extra) => ({ t, s, v, ...extra })
 
-const DATA_REQUESTS = [
-  ['r1', 'Faiza Rehman', 'Delete my face data . must be done by 1 Nov'], ['r2', 'Omar Abbasi', 'Send me my data . must be done by 31 Oct'],
-  ['r3', 'Rohan Mehta', 'Delete my account . must be done by 28 Oct'], ['r4', 'Imran Sheikh', 'Delete my face data . must be done by 4 Nov'],
-  ['r5', 'Mehreen Javed', 'Delete my face data . must be done by 24 Oct'], ['r6', 'Kiran Sandhu', 'Send me my data . must be done by 20 Oct'],
-]
-
-// A settings row shows either a value chip or a switch.
-const row = (t, s, v) => ({ t, s, v })
-const tog = (k, t, s, def) => ({ t, s, tog: k, def })
-
-function blocksFor(tab, state) {
+// Not in the backend: the list of admins (only the signed in admin is known), the wedding events
+// catalog, feature switches, photo storage rules and costs, and policy versions.
+function blocksFor(tab, me, requests, runRequest) {
   if (tab === 'team') {
     return [
-      { title: 'Team', sub: 'People who can use this admin', rows: TEAM.map((r) => row(...r)) },
+      { title: 'Team', sub: 'People who can use this admin', rows: me ? [row(me.name, me.role + ' . ' + me.email, 'Active now')] : [] },
       { title: 'Roles', sub: 'What each role can see', rows: Object.keys(ROLES).map((k) => row(k, ROLES[k].desc, ROLES[k].pages.split(' ').length + ' sections')) },
     ]
   }
   if (tab === 'events') {
-    return [{ title: 'Wedding events', sub: 'Events couples can choose when they create a wedding', rows: WEDDING_EVENTS.map((f) => tog('fn' + f[0], f[0], f[1] + ' . usually ' + f[3], f[6])) }]
+    return [{ title: 'Wedding events', sub: 'Events couples can choose when they create a wedding', rows: [], empty: 'Not connected yet.' }]
   }
   if (tab === 'app') {
     return [
-      {
-        title: 'App features', sub: 'Turn features on or off for everyone',
-        rows: [
-          tog('reels', 'Reels', 'Short videos in the app', true), tog('explore', 'Explore', 'Discover weddings and businesses', true),
-          tog('faces', 'Find yourself in photos', 'Groups photos by face, only for people who turn it on', true), tog('captions', 'Suggested captions', 'Suggests a caption when someone uploads', false),
-          tog('video', 'Highlight video after the wedding', 'Made the day after the last event', true), tog('urdu', 'Urdu app layout', 'Right to left, still being tested', false),
-        ],
-      },
+      { title: 'App features', sub: 'Turn features on or off for everyone', rows: [], empty: 'Not connected yet.' },
       {
         title: 'Photos', sub: 'How photos are stored',
         rows: [
           row('Stories disappear after', 'For everyone except the person who posted', '24 hours'),
-          row('Finished weddings move to cheaper storage after', 'Photos still open for families', '90 days'),
-          row('Photo features cost this month', 'Sorting, faces and highlight videos', 'USD 3,840 of 5,000'),
+          row('Finished weddings move to cheaper storage after', 'Photos still open for families', '—'),
+          row('Photo features cost this month', 'Sorting, faces and highlight videos', '—'),
         ],
       },
     ]
   }
   return [
-    { title: 'Data requests', sub: 'People who asked us to delete or send them their data', rows: DATA_REQUESTS.map((r) => row(r[1], r[2], state.reqDone[r[0]] ? 'Done' : 'To do')) },
-    { title: 'Policies', sub: 'What people agree to when they join', rows: [row('Terms of use', 'Last changed 2 August 2026', 'Version 2.8'), row('Privacy policy', 'Last changed 18 September 2026', 'Version 3.3')] },
+    {
+      title: 'Data requests', sub: 'People who asked us to delete or send them their data',
+      rows: (requests || []).map((r) => row(r.name, r.what, r.chip, { key: r.id, run: r.next ? () => runRequest(r) : null })),
+    },
+    { title: 'Policies', sub: 'What people agree to when they join', rows: [row('Terms of use', 'Last changed —', '—'), row('Privacy policy', 'Last changed —', '—')] },
   ]
 }
 
 export default function Settings() {
-  const { state, setState, toast } = useAdmin()
+  const { state, setState, toast, ask, auth } = useAdmin()
   const tab = state.setTab || 'team'
+  const { data: requests, reload } = useLoad(loadPrivacyRequests, [])
 
-  const flip = (r, on) => {
-    setState((s) => ({ tg: { ...s.tg, ['s:' + r.tog]: !on } }))
-    toast(r.t + (on ? ' turned off' : ' turned on'))
-  }
+  const flip = () => toast('Feature switches are not connected yet')
+
+  // A data request moves from To do, to Ready (export prepared), to Done (link sent).
+  const runRequest = (r) =>
+    ask({
+      title: r.next === 'ready' ? 'Mark ' + r.name + '’s data as ready?' : 'Mark ' + r.name + '’s data as sent?',
+      body: r.next === 'ready' ? 'Do this once their copy of the data is prepared.' : 'Do this once the link to their data has been emailed to them.',
+      label: r.next === 'ready' ? 'Mark as ready' : 'Mark as sent',
+      then: async () => {
+        const { error } = await advanceDataRequest(r)
+        if (error) return toast('Could not save: ' + error.message)
+        toast(r.name + (r.next === 'ready' ? '’s data is marked as ready' : '’s data is marked as sent'))
+        reload()
+      },
+    })
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '220px minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
@@ -79,7 +78,7 @@ export default function Settings() {
         })}
       </Card>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {blocksFor(tab, state).map((b) => (
+        {blocksFor(tab, auth.me, requests, runRequest).map((b) => (
           <Card key={b.title} style={{ overflow: 'hidden' }}>
             <div style={{ padding: '13px 18px', borderBottom: '1px solid #EFEAE2' }}>
               <div style={{ fontSize: 14.5, fontWeight: 600 }}>{b.title}</div>
@@ -88,19 +87,20 @@ export default function Settings() {
             {b.rows.map((r) => {
               const on = r.tog ? state.tg['s:' + r.tog] ?? r.def : false
               return (
-                <div key={r.t} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '11px 18px', borderBottom: '1px solid #F4F0E9' }}>
+                <div key={r.key || r.t} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '11px 18px', borderBottom: '1px solid #F4F0E9' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 500 }}>{r.t}</div>
                     <div style={{ fontSize: 12.5, color: '#8A8590' }}>{r.s}</div>
                   </div>
                   {r.tog ? (
-                    <Toggle on={on} onClick={() => flip(r, on)} />
+                    <Toggle on={on} onClick={flip} />
                   ) : (
-                    <span style={{ fontSize: 13, color: '#3d3a4a', background: '#F7F4EF', borderRadius: 6, padding: '3px 9px' }}>{r.v}</span>
+                    <span onClick={r.run || undefined} style={{ fontSize: 13, color: '#3d3a4a', background: '#F7F4EF', borderRadius: 6, padding: '3px 9px', cursor: r.run ? 'pointer' : 'default' }}>{r.v}</span>
                   )}
                 </div>
               )
             })}
+            {!b.rows.length && <div style={{ padding: '22px 18px', fontSize: 13, color: '#8A8590' }}>{b.empty || 'Nothing here yet.'}</div>}
           </Card>
         ))}
       </div>

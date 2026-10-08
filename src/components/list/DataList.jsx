@@ -7,7 +7,6 @@ import Popover, { MenuItem, Option } from '../common/Popover'
 import Cell from './Cell'
 
 const PER_PAGE = 10
-const CITY_OPTS = ['Any', 'Lahore', 'Karachi', 'Islamabad', 'Delhi', 'London']
 const DATE_OPTS = ['Any time', 'Last 7 days', 'Last 30 days']
 
 function Checkbox({ on, onClick }) {
@@ -80,14 +79,18 @@ export default function DataList({ listKey: k, cfg }) {
   const allOn = view.length > 0 && view.every((r) => s.sel[r.id])
   const selIds = Object.keys(s.sel).filter((x) => s.sel[x])
   const statuses = ['All', ...new Set(cfg.rows.map((r) => r.st[0]))]
+  // The cities that actually appear in this list.
+  const cityOpts = ['Any', ...[...new Set(cfg.rows.map((r) => r.city).filter((c) => c && c !== '—'))].sort((a, b) => a.localeCompare(b))]
   const hasFilters = s.q || s.st !== 'All' || s.city !== 'Any' || s.date !== 'Any time'
   const grid = '16px ' + cfg.cols.map((c) => 'minmax(0,' + c.w + ')').join(' ') + ' 28px'
   const clear = () => lset(k, { q: '', st: 'All', city: 'Any', date: 'Any time', pg: 0 })
   const pick = (key) => (v) => { lset(k, { [key]: v, pg: 0 }); setState({ pop: '' }) }
 
+  // A bulk action either saves through `run(ids)`, or (with `off`) says it is not connected yet.
   const runBulk = (b) => {
     const n = selIds.length
-    const run = () => { lset(k, { sel: {} }); toast(b.msg.replace('{n}', n)) }
+    if (b.off) return toast(b.off)
+    const run = () => { lset(k, { sel: {} }); if (b.run) b.run(selIds); else toast(b.msg.replace('{n}', n)) }
     if (b.danger) ask({ title: b.label + ' ' + n + ' ' + (n === 1 ? cfg.one : cfg.noun) + '?', body: 'This applies to every selected row and is saved in the activity log.', label: b.label, then: run })
     else run()
   }
@@ -116,7 +119,7 @@ export default function DataList({ listKey: k, cfg }) {
             <input value={s.q} onChange={(e) => lset(k, { q: e.target.value, pg: 0 })} placeholder={cfg.ph || 'Search'} style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: 'transparent' }} />
           </div>
           <FilterDropdown id={'dd:' + k + ':st'} label="Status" value={s.st} options={statuses} isSet={s.st !== 'All'} onPick={pick('st')} />
-          <FilterDropdown id={'dd:' + k + ':city'} label="City" value={s.city} options={CITY_OPTS} isSet={s.city !== 'Any'} onPick={pick('city')} />
+          <FilterDropdown id={'dd:' + k + ':city'} label="City" value={s.city} options={cityOpts} isSet={s.city !== 'Any'} onPick={pick('city')} />
           <FilterDropdown id={'dd:' + k + ':date'} label="Date" value={s.date} options={DATE_OPTS} isSet={s.date !== 'Any time'} onPick={pick('date')} />
           {hasFilters && <span onClick={clear} style={{ fontSize: 13, color: '#A6192E', fontWeight: 500, cursor: 'pointer', marginLeft: 4 }}>Clear filters</span>}
           <div style={{ flex: 1 }} />

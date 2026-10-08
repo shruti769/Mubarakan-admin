@@ -1,58 +1,61 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import Card from '../components/common/Card'
 import Icon from '../components/common/Icon'
 import { IC } from '../data/icons'
 import { face, img } from '../data/images'
-import { reviewLeft, reviewList } from '../data/selectors'
 import useAdmin from '../hooks/useAdmin'
-
-const WEDDING_NAMES = { 'AISHA-ZAIN-26': 'Aisha and Zain', 'SIMRAN-ARJUN-26': 'Simran and Arjun' }
-const HISTORY = {
-  '@waleed.butt': '2 posts removed in the last 30 days. Suspended once before.',
-  '@rohan.m': 'Banned. 9 posts removed before.',
-  '@imran.sh': 'New account, 6 days old.',
-  '@dholi.brothers': 'Business account, waiting to be verified.',
-}
+import { approvePost, loadReview, removeItem } from '../lib/data/review'
+import useLoad from '../lib/useLoad'
 
 const reasonOf = (m) =>
-  m.reps > 0
+  m.why ||
+  (m.reps > 0
     ? (m.reps === 1 ? '1 person reported this' : m.reps + ' people reported this') + (m.reasons[0] && !/^(Report|Appeal|Hide)/.test(m.reasons[0]) ? ' as ' + m.reasons[0].toLowerCase() : '')
-    : 'Our system thinks this may be inappropriate'
+    : 'Our system thinks this may be inappropriate')
 
-const whereOf = (w) => {
-  const p = w.split(' . ')
-  if (WEDDING_NAMES[p[0]]) return WEDDING_NAMES[p[0]] + (p[1] ? ', ' + p[1] : '')
-  if (/Public feed/.test(w)) return 'Public feed'
-  if (/stories/i.test(w)) return 'Stories'
-  if (/ad/i.test(w)) return 'Ad in the feed'
-  return w
-}
+// `where` is already "Wedding . Function", "Public feed" or "—".
+const whereOf = (w) => w.replace(' . ', ', ')
 
 const reasonColor = (m) => (m.reps > 0 ? '#A6192E' : '#8A6A12')
+const EMPTY = []
 const keyHint = (border) => ({ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, border: '1px solid ' + border, borderRadius: 4, padding: '0 5px' })
+
+// What is still waiting, and what is in the open tab.
+const leftOf = (queue, st) => queue.filter((m) => !st.rvDone[m.id])
+const listOf = (queue, st) => leftOf(queue, st).filter((m) => st.rvTab === 'all' || (st.rvTab === 'rep' ? m.reps > 0 : m.reps === 0))
 
 export default function ReviewPosts() {
   const { state, setState, getState, toast } = useAdmin()
+  const { data, reload } = useLoad(loadReview, [])
+  const queue = data || EMPTY
+  const busy = useRef(false)
 
   // Keep or remove the selected post, then move to the next one.
-  const act = useCallback((kind) => {
+  const act = useCallback(async (kind) => {
     const st = getState()
-    const items = reviewList(st)
-    if (!items.length) return
+    const items = listOf(queue, st)
+    if (!items.length || busy.current) return
     const cur = items.find((m) => m.id === st.rvSel) || items[0]
+    // Reports have no status in the backend, so a reported post cannot be marked as fine.
+    if (kind === 'keep' && !cur.pending) return toast('Keeping a reported post is not connected yet')
+    busy.current = true
+    const { error } = kind === 'keep' ? await approvePost(cur) : await removeItem(cur)
+    busy.current = false
+    if (error) return toast('Could not save: ' + error.message)
     const i = items.indexOf(cur)
     const next = items[i + 1] || items[i - 1]
     setState((s) => ({ rvDone: { ...s.rvDone, [cur.id]: kind }, rvSel: next ? next.id : null }))
-    toast(kind === 'keep' ? 'Kept. The post stays up.' : 'Removed. ' + cur.who.n + ' has been told why.')
-  }, [getState, setState, toast])
+    toast(kind === 'keep' ? 'Kept. The post is approved and shows in the app.' : cur.target === 'comment' ? 'Removed. The comment is deleted.' : 'Removed. The post no longer shows in the app.')
+    reload()
+  }, [queue, getState, setState, toast, reload])
 
   const move = useCallback((d) => {
     const st = getState()
-    const items = reviewList(st)
+    const items = listOf(queue, st)
     if (!items.length) return
     const i = Math.max(0, items.findIndex((m) => m.id === st.rvSel))
     setState({ rvSel: items[Math.min(items.length - 1, Math.max(0, i + d))].id })
-  }, [getState, setState])
+  }, [queue, getState, setState])
 
   useEffect(() => {
     const onKey = (e) => {
@@ -69,16 +72,16 @@ export default function ReviewPosts() {
     return () => document.removeEventListener('keydown', onKey)
   }, [act, move, getState])
 
-  const items = reviewList(state)
-  const all = reviewLeft(state)
+  const items = listOf(queue, state)
+  const all = leftOf(queue, state)
   const cur = items.find((m) => m.id === state.rvSel) || items[0]
-  const done = Object.values(state.rvDone)
 
+  // Nothing records who reviewed what or when, so the day's totals are not known.
   const stats = [
-    ['Waiting for review', String(205 + all.length)],
-    ['Reported by people', String(all.filter((m) => m.reps > 0).length + 138)],
-    ['Reviewed today', String(326 + done.length)],
-    ['Removed today', String(41 + done.filter((v) => v === 'remove').length)],
+    ['Waiting for review', data ? String(all.length) : '—'],
+    ['Reported by people', data ? String(all.filter((m) => m.reps > 0).length) : '—'],
+    ['Reviewed today', '—'],
+    ['Removed today', '—'],
   ]
   const tabs = [['all', 'All', all.length], ['rep', 'Reported', all.filter((m) => m.reps > 0).length], ['sys', 'By system', all.filter((m) => m.reps === 0).length]]
   const sensitive = cur && cur.img && cur.ai[1] >= 25 && cur.ai[2] !== 'green' && !state.reveal[cur.id]
@@ -170,7 +173,7 @@ export default function ReviewPosts() {
                 </div>
                 <div>
                   <div style={{ fontSize: 12.5, color: '#8A8590' }}>About the person</div>
-                  <div style={{ fontSize: 13.5, marginTop: 3, lineHeight: 1.45 }}>{HISTORY[cur.who.s] || 'No problems before. On Mubarakan since 2025.'}</div>
+                  <div style={{ fontSize: 13.5, marginTop: 3, lineHeight: 1.45 }}>{cur.about}</div>
                 </div>
                 <div style={{ flex: 1 }} />
                 <div className="hv-keep" onClick={() => act('keep')} style={{ height: 38, borderRadius: 8, border: '1px solid #1E5A4A', color: '#1E5A4A', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer' }}>
