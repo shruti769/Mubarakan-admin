@@ -24,6 +24,7 @@ export const INITIAL_STATE = {
   confirm: null,
   ctext: '',
   modal: null,
+  bzForm: null, // the add a business form while it is open
   ust: {}, // user status changes
   apps: {}, // business application decisions
   paused: {},

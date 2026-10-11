@@ -1,9 +1,9 @@
 // Centered dialog over a dimmed backdrop. Clicking the backdrop closes it.
-export default function Dialog({ width, zIndex, onClose, children }) {
+export default function Dialog({ width, zIndex, onClose, style, children }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(20,20,43,.4)', animation: 'fadeIn .14s' }} />
-      <div style={{ position: 'relative', width, background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 24px 60px rgba(20,20,43,.22)', animation: 'modalIn .16s ease-out' }}>
+      <div style={{ position: 'relative', width, background: '#fff', borderRadius: 14, padding: 22, boxShadow: '0 24px 60px rgba(20,20,43,.22)', animation: 'modalIn .16s ease-out', ...style }}>
         {children}
       </div>
     </div>

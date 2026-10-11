@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
+import AddBusinessModal from '../common/AddBusinessModal'
 import ConfirmDialog from '../common/ConfirmDialog'
 import CreateAdModal from '../common/CreateAdModal'
 import Toasts from '../common/Toasts'
@@ -27,6 +28,7 @@ export default function AppLayout() {
         </div>
       </div>
       <CreateAdModal />
+      <AddBusinessModal />
       <ConfirmDialog />
       <Toasts />
     </div>

@@ -1,4 +1,5 @@
 import DataList from '../components/list/DataList'
+import { EMPTY_BUSINESS } from '../data/constants'
 import { face } from '../data/images'
 import { num } from '../data/selectors'
 import useActions from '../hooks/useActions'
@@ -8,7 +9,7 @@ import { loadBusinesses, suspendBusinesses } from '../lib/data/business'
 import useLoad from '../lib/useLoad'
 
 export default function Businesses() {
-  const { toast } = useAdmin()
+  const { setState, toast } = useAdmin()
   const { open } = useNavigation()
   const { businessAction } = useActions()
   const { data, reload } = useLoad(loadBusinesses, [])
@@ -26,7 +27,7 @@ export default function Businesses() {
       cfg={{
         sub: 'Wedding businesses that take enquiries through Mubarakan.', noun: 'businesses', one: 'business', ph: 'Search businesses',
         rows, search: (r) => r.name + r.cat + r.city,
-        btns: [{ label: 'Add business', run: () => toast('Adding a business is not connected yet'), primary: 1 }],
+        btns: [{ label: 'Add business', run: () => setState({ bzForm: { f: EMPTY_BUSINESS, tried: false, after: reload } }), primary: 1 }],
         // Verification, applications and reply times are not in the backend.
         stats: [['Total businesses', data ? String(data.total) : '—', ''], ['Verified', '—', ''], ['Waiting for approval', '—', ''], ['Usually reply within', '—', '']],
         cols: [

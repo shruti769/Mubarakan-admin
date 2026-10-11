@@ -77,14 +77,14 @@ function NeedsAttention({ a }) {
           <span onClick={run} style={{ fontSize: 13, fontWeight: 500, color: '#A6192E', cursor: 'pointer', width: 58, textAlign: 'right' }}>{link}</span>
         </div>
       ))}
-    </Card>
+    </Card>  
   )
-}
+}      
 
 function RevenueDonut() {
   return (
     <Card style={{ padding: '16px 18px' }}>
-      <div style={{ fontSize: 15, fontWeight: 600 }}>Revenue by ad type</div>
+      <div style={{ fontSize: 15, fontWeight: 600 }}>Revenue by ad type</div> 
       <div style={{ fontSize: 12.5, color: '#8A8590' }}>This month, in PKR</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginTop: 12 }}>
         <div style={{ position: 'relative', width: 150, height: 150, flexShrink: 0 }}>

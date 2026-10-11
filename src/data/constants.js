@@ -42,3 +42,6 @@ export const ENT_PAGE = { user: 'users', wedding: 'weddings', business: 'busines
 export const PAGE_ENT = Object.fromEntries(Object.entries(ENT_PAGE).map(([e, p]) => [p, e]))
 
 export const detailPath = (ent, id) => PAGE_PATH[ENT_PAGE[ent]] + '/' + encodeURIComponent(id)
+
+// A blank add a business form.
+export const EMPTY_BUSINESS = { name: '', cat: '', city: '', owner: '', phone: '', email: '', link: '', plan: 'Starter', ver: false }

@@ -120,6 +120,24 @@ export async function setBusinessActive(b, active) {
   return supabase.from('ads').update({ active: false }).eq('brand', b.name)
 }
 
+/**
+ * Adds a business to the end of the Explore list. The photo is uploaded into the admin's own
+ * folder of the public media bucket (the only place storage lets them write).
+ */
+export async function createBusiness({ name, cat, city, file }) {
+  let image = ''
+  if (file) {
+    const { data: u } = await supabase.auth.getUser()
+    const path = u.user.id + '/vendors/' + Date.now() + '.' + (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const up = await supabase.storage.from('media').upload(path, file, { contentType: file.type })
+    if (up.error) return { error: up.error }
+    image = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+  }
+  const last = await supabase.from('vendors').select('sort').order('sort', { ascending: false }).limit(1)
+  if (last.error) return { error: last.error }
+  return supabase.from('vendors').insert({ name: name.trim(), category: cat + ', ' + city, image, sort: ((last.data[0] && last.data[0].sort) || 0) + 1 })
+}
+
 /** Suspends several businesses and their ads. */
 export async function suspendBusinesses(rows) {
   const ids = rows.map((r) => r.id)

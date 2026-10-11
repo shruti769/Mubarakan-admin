@@ -62,7 +62,7 @@ export default function AdminProvider({ children }) {
       if (ref.current.pop && !(e.target.closest && e.target.closest('[data-pop]'))) setState({ pop: '' })
     }
     const key = (e) => {
-      if (e.key === 'Escape') setState({ pop: '', confirm: null, modal: null })
+      if (e.key === 'Escape') setState({ pop: '', confirm: null, modal: null, bzForm: null })
     }
     document.addEventListener('mousedown', down)
     document.addEventListener('keydown', key)
