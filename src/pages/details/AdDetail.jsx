@@ -36,7 +36,7 @@ function Ad({ a, enquiries, after }) {
       stats={[['Seen by', a.seen], ['Clicks', a.clicks], ['Enquiries', a.enq], ['Spent', a.spend]]}
       actions={[
         { label: a.st[0] === 'Paused' ? 'Resume' : 'Pause', run: () => togglePaused(a, (wasPaused) => (wasPaused ? 'Ad running again' : 'Ad paused'), after) },
-        { label: 'Edit ad', run: () => setState({ modal: { id: a.id, biz: a.biz, head: a.head, cities: a.city.split(', '), after } }), primary: 1 },
+        { label: 'Edit ad', run: () => setState({ modal: { id: a.id, biz: a.biz, head: a.head, cities: a.city.split(', '), photos: a.photos, after } }), primary: 1 },
       ]}
       more={[{ label: 'End ad', run: () => endAd('It stops showing now.', a, after), danger: 1 }]}
       tabs={tabs}

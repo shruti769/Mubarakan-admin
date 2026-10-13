@@ -120,6 +120,15 @@ export async function setBusinessActive(b, active) {
   return supabase.from('ads').update({ active: false }).eq('brand', b.name)
 }
 
+/** Uploads a photo into the admin's own folder of the public media bucket and returns its URL. */
+async function uploadPhoto(file, folder) {
+  const { data: u } = await supabase.auth.getUser()
+  const path = u.user.id + '/' + folder + '/' + Date.now() + '.' + (file.name.split('.').pop() || 'jpg').toLowerCase()
+  const up = await supabase.storage.from('media').upload(path, file, { contentType: file.type })
+  if (up.error) return { error: up.error }
+  return { url: supabase.storage.from('media').getPublicUrl(path).data.publicUrl }
+}
+
 /**
  * Adds a business to the end of the Explore list. The photo is uploaded into the admin's own
  * folder of the public media bucket (the only place storage lets them write).
@@ -127,11 +136,9 @@ export async function setBusinessActive(b, active) {
 export async function createBusiness({ name, cat, city, file }) {
   let image = ''
   if (file) {
-    const { data: u } = await supabase.auth.getUser()
-    const path = u.user.id + '/vendors/' + Date.now() + '.' + (file.name.split('.').pop() || 'jpg').toLowerCase()
-    const up = await supabase.storage.from('media').upload(path, file, { contentType: file.type })
-    if (up.error) return { error: up.error }
-    image = supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+    const up = await uploadPhoto(file, 'vendors')
+    if (up.error) return up
+    image = up.url
   }
   const last = await supabase.from('vendors').select('sort').order('sort', { ascending: false }).limit(1)
   if (last.error) return { error: last.error }
@@ -186,24 +193,35 @@ const LEAD_KEYS = [
 const leadKeyFor = (cat) => (LEAD_KEYS.find(([re]) => re.test(cat)) || [null, 'decor'])[1]
 
 /**
- * Creates an ad from the form (business, headline, cities). Everything else the app needs is
- * filled from the business's vendor row, or a default: a single photo ad using the business's
- * photo, no supporting line, "Get a quote", running now, last in the order.
+ * Creates an ad from the form (business, headline, cities, photo). Everything else the app needs
+ * is filled from the business's vendor row, or a default: a single photo ad using the chosen photo
+ * or else the business's, no supporting line, "Get a quote", running now, last in the order.
  */
-export async function createAd({ vendor, head, cities }) {
+export async function createAd({ vendor, head, cities, file }) {
   const [cat, city] = splitCategory(vendor.category)
+  const up = file ? await uploadPhoto(file, 'ads') : { url: vendor.image }
+  if (up.error) return up
   const last = await supabase.from('ads').select('sort').order('sort', { ascending: false }).limit(1)
   if (last.error) return { error: last.error }
   return supabase.from('ads').insert({
     brand: vendor.name, category: cat, city: cities.length ? cities.join(', ') : city, format: 'edit', line: head.trim(),
-    support: '', cta: 'Get a quote', lead_key: leadKeyFor(cat), photos: vendor.image ? [vendor.image] : [], extra: '',
+    support: '', cta: 'Get a quote', lead_key: leadKeyFor(cat), photos: up.url ? [up.url] : [], extra: '',
     active: true, sort: ((last.data[0] && last.data[0].sort) || 0) + 1,
   })
 }
 
-/** Edits the business, headline and cities of an existing ad; other columns stay as they are. */
-export const updateAd = (id, { vendor, head, cities }) =>
-  supabase.from('ads').update({ brand: vendor.name, category: splitCategory(vendor.category)[0], line: head.trim(), ...(cities.length ? { city: cities.join(', ') } : {}) }).eq('id', id)
+/**
+ * Edits the business, headline, cities and photo of an existing ad; other columns stay as they are.
+ * An ad still without a photo picks up the business's, so it never shows up blank in the app.
+ */
+export async function updateAd(id, { vendor, head, cities, file, photos = [] }) {
+  const up = file ? await uploadPhoto(file, 'ads') : { url: photos.length ? '' : vendor.image }
+  if (up.error) return up
+  return supabase.from('ads').update({
+    brand: vendor.name, category: splitCategory(vendor.category)[0], line: head.trim(),
+    ...(cities.length ? { city: cities.join(', ') } : {}), ...(up.url ? { photos: [up.url] } : {}),
+  }).eq('id', id)
+}
 
 // Enquiries ----------------------------------------------------------------------------------
 
