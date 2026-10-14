@@ -10,10 +10,10 @@ import useLoad from '../lib/useLoad'
 
 export default function Businesses() {
   const { setState, toast } = useAdmin()
-  const { open } = useNavigation()
+  const { open } = useNavigation()                                  
   const { businessAction } = useActions()
   const { data, reload } = useLoad(loadBusinesses, [])
-  const rows = data ? data.rows : []
+  const rows = data ? data.rows : []                       
   const suspendMany = async (ids) => {
     const { error } = await suspendBusinesses(rows.filter((r) => ids.includes(r.id)))
     if (error) return toast('Could not save: ' + error.message)
